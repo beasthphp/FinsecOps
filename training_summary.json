@@ -1,0 +1,38 @@
+{
+  "seed": 42,
+  "rows": 6000,
+  "feature_columns": [
+    "login_hour",
+    "failed_logins",
+    "successful_logins",
+    "unique_ips",
+    "new_ip_flag",
+    "file_access_count",
+    "files_downloaded",
+    "download_mb",
+    "db_queries",
+    "admin_access_count",
+    "unique_resources"
+  ],
+  "normal_rows": 5425,
+  "synthetic_anomaly_rows": 575,
+  "training_rows_normal_only": 4340,
+  "test_rows": 1660,
+  "confusion_matrix": [
+    [
+      1056,
+      29
+    ],
+    [
+      19,
+      556
+    ]
+  ],
+  "normal_precision": 0.9823,
+  "normal_recall": 0.9733,
+  "anomaly_precision": 0.9504,
+  "anomaly_recall": 0.967,
+  "anomaly_f1": 0.9586,
+  "risk_scale": 0.184893131082917,
+  "risk_interpretation": "Prototype model-derived severity. 70 is the Isolation Forest anomaly boundary; it is not a probability."
+}

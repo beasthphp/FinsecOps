@@ -1,0 +1,2 @@
+"""FinSecOps cybersecurity monitoring prototype."""
+
