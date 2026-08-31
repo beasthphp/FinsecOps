@@ -1,138 +1,72 @@
-# FinSecOps
+# FinSecOps — Security Monitoring & Risk Detection Prototype
 
-FinSecOps is a small cybersecurity monitoring prototype that combines deterministic threat-detection rules with an already-trained Isolation Forest model.
+FinSecOps is a cybersecurity monitoring prototype that turns authentication, database, and file-access activity into explainable security alerts.
 
-It is intentionally not a production SIEM. The goal is to demonstrate security event logging, feature aggregation, rule detection, behavioral anomaly detection, risk scoring, alert generation, and a Streamlit monitoring dashboard.
-
-## Problem
-
-Security teams receive large amounts of authentication, database, and file-access activity. Raw logs are useful, but they become much easier to triage when suspicious patterns are grouped, scored, and explained.
-
-## Solution
-
-FinSecOps combines:
+It combines two complementary detection approaches:
 
 ```text
-deterministic threat-detection rules
-+
-Isolation Forest behavioral anomaly detection
+Rule-based threat detection
+        +
+Isolation Forest anomaly detection
+        |
+        v
+Combined risk scoring
+        |
+        v
+Prioritized security alerts
+        |
+        v
+Streamlit monitoring dashboard
 ```
 
-The rule engine catches known suspicious patterns. The Isolation Forest scores unusual one-hour user behavior without requiring attack labels. The final risk engine combines both signals into alert severity.
+The project is intentionally a **small, working security-monitoring prototype**, not a production SIEM. Its purpose is to demonstrate how logs can be aggregated, analyzed, scored, and surfaced for investigation.
 
-The ML risk score is anomaly severity, not an attack probability.
-The demo alert threshold is `30`, so medium-risk suspicious behavior is visible while normal low-risk windows remain quiet.
+## What It Detects
+
+- **Brute-force behavior** — repeated failed login attempts
+- **Suspicious logins** — unusual authentication behavior such as new-IP activity
+- **Privilege misuse** — abnormal administrative access
+- **Potential data exfiltration** — unusually large or frequent downloads
+- **Behavioral anomalies** — user activity that differs from the model's learned normal patterns
+- **Mixed attacks** — scenarios where multiple suspicious signals occur together
 
 ## Architecture
 
 ```text
-Security Events
-      |
-      v
-SQLite Event Storage
-      |
-      +--> Rule Engine --------+
-      |                        |
-      +--> Feature Extractor   |
-               |               |
-               v               |
-        Isolation Forest       |
-               |               |
-               +---------------+
-                       |
-                       v
-                 Risk Engine
-                       |
-                       v
-                 Alert Manager
-                       |
-                       v
-              Streamlit Dashboard
+Synthetic Security Events
+          |
+          v
+   SQLite Event Store
+          |
+     +----+------------------+
+     |                       |
+     v                       v
+ Rule Engine          Feature Extractor
+                             |
+                             v
+                     Isolation Forest
+     |                       |
+     +-----------+-----------+
+                 |
+                 v
+            Risk Engine
+                 |
+                 v
+           Alert Manager
+                 |
+                 v
+        Streamlit Dashboard
 ```
 
-## Current Detections
+## Detection Strategy
 
-- Brute Force
-- Suspicious Login
-- Privilege Misuse
-- Potential Data Exfiltration
-- Behavioral Anomaly
+### 1. Rule engine
 
-## Project Layout
+The deterministic rule engine captures suspicious patterns that have clear security meaning. This makes alerts easy to explain because the system can state which behavior triggered the rule.
 
-```text
-app/
-  alert_manager.py
-  database.py
-  event_store.py
-  feature_extractor.py
-  log_generator.py
-  ml_detector.py
-  risk_engine.py
-  rule_engine.py
-dashboard/
-  dashboard.py
-models/
-  isolation_forest_pipeline.joblib
-data/
-  finsecops.db
-scripts/
-  run_simulation.py
-tests/
-  test_detection.py
-```
+### 2. Behavioral anomaly model
 
-The original training artifacts are kept at the project root for traceability. Runtime inference uses `models/isolation_forest_pipeline.joblib`.
-
-## Run
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Generate the full demo dataset and alerts:
-
-```bash
-python scripts/run_simulation.py
-```
-
-Run one scenario:
-
-```bash
-python scripts/run_simulation.py --reset --scenario brute_force
-```
-
-Start the dashboard:
-
-```bash
-streamlit run dashboard/dashboard.py
-```
-
-## Dashboard Demo
-
-1. Generate normal traffic.
-2. Confirm raw security events appear.
-3. Simulate brute force.
-4. Confirm failed-login events appear.
-5. Confirm a high alert appears.
-6. Repeat for suspicious login, privilege misuse, data exfiltration, behavioral anomaly, and mixed attack.
-
-Each alert includes the rule and ML risk scores, final risk, severity, and an explanation of why the alert exists.
-The default demo is calibrated to show a distribution: normal windows are low, the lighter suspicious-login scenario is medium, single-pattern attacks are high, and the mixed attack is critical.
-
-## Testing
-
-```bash
-pytest
-```
-
-The tests cover normal behavior, brute force, privilege misuse, data exfiltration, a behavioral anomaly, and a combined attack.
-
-## ML Notes
-
-The Isolation Forest model was trained on normal synthetic one-hour user behavior rows. It receives features in this exact order:
+An `IsolationForest` model from scikit-learn evaluates one-hour user-behavior windows using these features:
 
 ```text
 login_hour
@@ -148,15 +82,175 @@ admin_access_count
 unique_resources
 ```
 
-Synthetic evaluation metrics are prototype validation only. They should not be presented as real-world cyberattack detection accuracy.
+The model was trained on synthetic normal-behavior rows and is used to assign anomaly severity to new behavior windows.
+
+The ML score is **not an attack probability**. It represents model-derived anomaly severity.
+
+### 3. Risk engine
+
+Rule severity and ML anomaly severity are combined into a final risk score. Alerts are then assigned a severity level so the most suspicious activity can be reviewed first.
+
+Each generated alert includes:
+
+- rule risk score
+- ML anomaly score
+- final risk score
+- severity
+- explanation of the suspicious behavior
+
+## Prototype ML Evaluation
+
+The committed synthetic training experiment contains:
+
+| Metric | Value |
+| --- | ---: |
+| Dataset rows | 6,000 |
+| Normal rows | 5,425 |
+| Synthetic anomaly rows | 575 |
+| Normal-only training rows | 4,340 |
+| Test rows | 1,660 |
+| Anomaly precision | 0.9504 |
+| Anomaly recall | 0.9670 |
+| Anomaly F1 | 0.9586 |
+
+These metrics only measure performance on the project's **synthetic prototype dataset**. They must not be interpreted as real-world cyberattack detection accuracy.
+
+## Tech Stack
+
+| Area | Technology |
+| --- | --- |
+| Core language | Python |
+| Data processing | pandas, NumPy |
+| Machine learning | scikit-learn, Isolation Forest |
+| Model persistence | joblib |
+| Event storage | SQLite |
+| Dashboard | Streamlit |
+| Testing | pytest |
+
+## Project Layout
+
+```text
+app/
+  alert_manager.py       Alert creation and persistence
+  database.py            SQLite setup
+  event_store.py         Security-event storage
+  feature_extractor.py   User behavior aggregation
+  log_generator.py       Synthetic security-event generation
+  ml_detector.py         Isolation Forest inference
+  risk_engine.py         Rule + ML risk combination
+  rule_engine.py         Deterministic security rules
+
+dashboard/
+  dashboard.py           Streamlit monitoring interface
+models/
+  isolation_forest_pipeline.joblib
+scripts/
+  run_simulation.py      End-to-end security scenarios
+tests/
+  test_detection.py
+
+train_isolation_forest.py
+finsecops_behavior_dataset.csv
+training_summary.json
+```
+
+The original training artifacts remain in the repository for traceability. Runtime inference uses the pipeline stored under `models/`.
+
+## Run the Prototype
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Generate the full demonstration dataset and alerts:
+
+```bash
+python scripts/run_simulation.py
+```
+
+Run an individual attack scenario:
+
+```bash
+python scripts/run_simulation.py --reset --scenario brute_force
+```
+
+Start the dashboard:
+
+```bash
+streamlit run dashboard/dashboard.py
+```
+
+## Suggested Demo Flow
+
+1. Generate normal activity.
+2. Verify that events appear in the event store/dashboard.
+3. Run the brute-force scenario.
+4. Inspect the resulting failed-login events and security alert.
+5. Compare the rule score, ML score, final risk, and explanation.
+6. Repeat with privilege misuse, suspicious login, data exfiltration, behavioral anomaly, and mixed-attack scenarios.
+
+The default demo is calibrated so normal windows remain low risk while increasingly suspicious scenarios rise through medium, high, and critical severity.
+
+## Testing
+
+```bash
+pytest
+```
+
+Tests cover representative normal and suspicious scenarios including:
+
+- normal behavior
+- brute force
+- privilege misuse
+- data exfiltration
+- behavioral anomaly
+- combined attack activity
+
+## Engineering Decisions
+
+### Rules + ML instead of ML alone
+
+Known suspicious patterns are better represented by deterministic security rules, while Isolation Forest is useful for behavior that is unusual but not covered by a predefined signature. Combining both gives the prototype explainability and anomaly sensitivity.
+
+### Unsupervised anomaly detection
+
+Isolation Forest does not require labeled attack examples for training. That makes it a practical prototype choice for demonstrating user-behavior anomaly detection when the normal baseline is easier to model than every possible attack.
+
+### Explainable alerts
+
+The final alert keeps the rule and ML components separate instead of exposing only one opaque score. This makes it easier to understand why an alert was created.
+
+### Small local architecture
+
+SQLite, local model files, and a Streamlit dashboard keep the project easy to run and inspect. Distributed ingestion and large-scale SIEM infrastructure are intentionally outside the current scope.
+
+## Current Scope & Limitations
+
+This repository is a learning and portfolio prototype. It does **not** claim production SOC or SIEM capability.
+
+Current limitations include:
+
+- synthetic event generation rather than production log ingestion
+- synthetic ML training/evaluation data
+- no packet inspection
+- no threat-intelligence feeds
+- no automatic firewall or account-blocking actions
+- no distributed event pipeline
+- no Elasticsearch/Kafka infrastructure
+- no cloud deployment
 
 ## Future Work
 
-- Harder synthetic data generation
-- More configurable detection thresholds
-- Better alert deduplication
-- User baseline management
-- MITRE ATT&CK mapping
-- Real log ingestion adapters
+- ingest real structured authentication and system logs
+- add user-specific behavioral baselines
+- map alerts to MITRE ATT&CK techniques
+- improve alert deduplication and correlation
+- make detection thresholds configurable
+- add richer investigation timelines
+- evaluate anomaly models on more realistic datasets
 
-Out of scope for this prototype: Kafka, Redis, Elasticsearch, Kubernetes, deep learning, packet inspection, firewall blocking, automatic account disabling, distributed architecture, cloud deployment, and real-time threat intelligence.
+## Interview Summary
+
+> I built a Python security-monitoring prototype that analyzes authentication, database, and file-access events using deterministic threat rules and an Isolation Forest behavioral-anomaly model. A risk engine combines both signals into explainable severity-ranked alerts that are displayed in a Streamlit dashboard.
