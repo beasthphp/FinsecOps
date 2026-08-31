@@ -1,4 +1,4 @@
-"""Deterministic cybersecurity rules for raw security events."""
+"""Explainable rule-based detections for FinSecOps security behavior windows."""
 
 from __future__ import annotations
 
@@ -165,4 +165,3 @@ def detect_data_exfiltration(window: BehaviorWindow) -> RuleFinding | None:
             ),
         )
     return None
-
