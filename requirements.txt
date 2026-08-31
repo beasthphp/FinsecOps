@@ -1,6 +1,11 @@
+# Data and model runtime
 joblib
 numpy<2.5
 pandas
-pytest
 scikit-learn==1.8.0
+
+# Dashboard
 streamlit
+
+# Testing
+pytest
