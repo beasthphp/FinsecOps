@@ -130,31 +130,18 @@ These metrics only measure performance on the project's **synthetic prototype da
 ## Project Layout
 
 ```text
-app/
-  alert_manager.py       Alert creation and persistence
-  database.py            SQLite setup
-  event_store.py         Security-event storage
-  feature_extractor.py   User behavior aggregation
-  log_generator.py       Synthetic security-event generation
-  ml_detector.py         Isolation Forest inference
-  risk_engine.py         Rule + ML risk combination
-  rule_engine.py         Deterministic security rules
-
-dashboard/
-  dashboard.py           Streamlit monitoring interface
-models/
-  isolation_forest_pipeline.joblib
-scripts/
-  run_simulation.py      End-to-end security scenarios
-tests/
-  test_detection.py
-
-train_isolation_forest.py
-finsecops_behavior_dataset.csv
-training_summary.json
+app/                         Security monitoring core
+dashboard/                   Streamlit investigation UI
+data/                        Synthetic datasets and experiment metadata
+docs/                        Prototype and ML notes
+models/                      Serialized Isolation Forest pipeline
+scripts/                     Simulation and training entry points
+tests/                       Detection and risk-pipeline tests
+requirements.txt             Runtime and test dependencies
+README.md                    Project overview
 ```
 
-The original training artifacts remain in the repository for traceability. Runtime inference uses the pipeline stored under `models/`.
+Training artifacts are grouped under `data/` and `models/` so the repository root stays focused on the application. Runtime inference loads `models/isolation_forest_pipeline.joblib`.
 
 ## Run the Prototype
 
@@ -180,6 +167,12 @@ Start the dashboard:
 
 ```bash
 streamlit run dashboard/dashboard.py
+```
+
+Retrain the prototype Isolation Forest from the committed synthetic dataset:
+
+```bash
+python scripts/train_isolation_forest.py
 ```
 
 ## Suggested Demo Flow
